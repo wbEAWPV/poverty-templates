@@ -20,7 +20,9 @@ gen include = flag1 == 0 & flag2 == 0 & flag3 == 0
 gen age = d2
 replace age = 0.5 if d2 == 0 // for items with age given as 0 years, assume age is 6 months
 gen replacement_cost = d4 * (1 + `pi')^age         // construct replacement cost from purchase price and inflation since
-gen delta = 1 - (d3/replacement_cost)^(1/age) if include
+//gen delta = 1 - (d3/replacement_cost)^(1/age) if include
+// also implemented as 
+gen delta = 1 - (d3/d4)^(1/age) + `pi' if include // linearizes impact of inflation, very similar except in very high inflation contexts
 
 //  c. median depreciation by item type
 bys d0: egen delta_med = pctile(delta), p(50)

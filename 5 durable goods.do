@@ -37,7 +37,7 @@ keep if d1 > 0
 
 /* ---- 2/3. Depreciation rates and use value ------------------------------- */
 
-include "${frags}\durables_maxlife.do"
+include "${frags}\5-2_durables_replacement.do"
 
 
 /* ---- 4. Check for outliers and 0 values ---------------------------------- */ 
