@@ -12,6 +12,7 @@ drop _m
 //  c. construct welfare and food welfare
 gen welfare = consexp/deflator_joint/hhsize 
 gen foodwel = foodcons/deflator_joint/hhsize
+tabstat welfare foodwel [aw = hhweight], stat(min p10 p25 med p75 p90 max)
 
 //  d. construct deciles based on welfare
 xtile decile = welfare [aw = hhweight * hhsize], n(10)
@@ -56,8 +57,9 @@ save `itemlist'
 
 
 /* ---- 3. Food poverty line ------------------------------------------------ */
+// basket explicit and cost-of-calories require you to have constructed quantities
 
-include "${frags}\basket_cost_per_calorie_democratic.do"
+include "${frags}\9-3_basket_explicit.do"
 di `plf'
 
 
@@ -69,7 +71,7 @@ gen foodpovline = `plf'
 lab var foodpovline "food povery line"
 sum foodpovline
 
-include "${frags}\ravallion_alpha.do"
+include "${frags}\9-4_ravallion_alpha.do"
 
 if $ravallion == 1  gen povline_total = `lr'
 if $ravallion == 2  gen povline_total = (`lr' + `ur')/2
@@ -80,6 +82,5 @@ sum povline_total
 
 /* ---- 5. Basic summary stats ---------------------------------------------- */
 
-gen poor = welfare < foodpovline
+gen poor = welfare < povline
 table admin1 urbrur [aw = hhweight*hhsize], stat(mean poor)
-

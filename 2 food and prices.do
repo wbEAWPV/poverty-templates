@@ -46,19 +46,20 @@ tab items_consumed if hhtag
 // 68 hhs with no food consumption
 
 keep if c1 == 1
+tempfile maindata
+save `maindata'
 
 
 /* ---- 3. Prices ----------------------------------------------------------- */
+//  need to do something for prices (for deflators, basket) even if using self-reports in 4
 
-tempfile maindata
-save `maindata'
-include "${frags}\prices_classic_kg_cluster.do"
+include "${frags}\2-3_prices_classic_kg_cluster.do"
 
 
 /* ---- 4. Consumption ------------------------------------------------------ */
 
 use `maindata', clear
-include "${frags}\food_valuation_classic_kg_cluster.do"
+include "${frags}\2-4_food_valuation_classic_kg_cluster.do"
 
 
 
@@ -115,7 +116,7 @@ lab val source sources
 drop if consexp == .
 
 //  a. annualize
-replace consexp = consexp * 52 // assume 1 week recall period
+replace consexp = consexp * 365/7 // assume 1 week recall period
 
 //  b. define universal item code
 gen item = c0

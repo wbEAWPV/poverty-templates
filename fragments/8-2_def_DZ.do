@@ -19,7 +19,7 @@ merge m:1 psu c0 using "${temp}\ph_classic_kg_cluster.dta", assert(match using) 
 merge m:1 c0     using "${temp}\p0_classic_kg_cluster.dta", assert(match using) keep(match) nogen 
 
 //  d. relative prices
-gen p0_ph = p0/ph // better option in this case
+gen p0_ph = p0/ph 
 sum p0_ph, d
 assert p0_ph > 0.33 & p0_ph < 3 // check relative prices within a reasonable range, not a difference of more than a factor of 2 or 3 depending on context
 
@@ -42,4 +42,4 @@ drop _min _max _median _flag
 save "${temp}\deflators_DZ.dta", replace
 
 //  h. graphs
-graph box deflator_joint, over(urbrur) asyvar over(admin1) 
+if $draw graph box deflator_joint, over(urbrur) asyvar over(admin1) 

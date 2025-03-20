@@ -11,7 +11,7 @@ gsort -share
 gen cumul_share = sum(share)
 gen prev_share = cumul_share[_n-1]
 list
-keep if prev_share < 0.9 | _n == 1 // keep items so that cumulative share is at least 90%
+keep if prev_share < $minshare | _n == 1 // keep items so that cumulative share is at least minimum
 total share
 keep item
 tempfile itemlist
@@ -20,7 +20,7 @@ save `itemlist'
 
 /* ---- 2. Construct deflator ----------------------------------------------- */
 
-include "${frags}\def_DZ.do"
+include "${frags}\8-2_def_DZ.do"
 
 
 /* ---- 3. Merge in and inspect --------------------------------------------- */
@@ -35,5 +35,5 @@ merge m:1 admin1 urbrur quarter using "${temp}\deflators_joint_Paasche_modal.dta
 //  b. inspect
 mean deflator [pw = hhweight] // should be close to 1
 table (quarter) (admin1 urbrur) [pw = hhweight], stat(mean deflator) nototal
-graph box deflator, over(urbrur) asyvar over(admin1) name(spatial, replace)
-graph box deflator, over(quarter) name(temporal, replace)
+if $draw graph box deflator, over(urbrur) asyvar over(admin1) name(spatial, replace)
+if $draw graph box deflator, over(quarter) name(temporal, replace)
