@@ -27,10 +27,9 @@ include "${frags}\8-2_def_DZ.do"
 
 //  a. merge
 use "${temp}\hh_char.dta", clear
-// should drop hhs with no food consumption here, then can use assert(match) below
-//merge 1:1 hhid using "${temp}\deflators_DZ.dta", assert(match master) keep(match) nogen
+merge 1:1 hhid using "${temp}\deflators_DZ.dta", assert(match) keep(match) nogen
 //merge m:1 admin1 urbrur quarter using "${temp}\deflators_joint_Laspeyres.dta", assert(match) nogen
-merge m:1 admin1 urbrur quarter using "${temp}\deflators_joint_Paasche_modal.dta", assert(match) nogen
+//merge m:1 admin1 urbrur quarter using "${temp}\deflators_joint_Paasche_modal.dta", assert(match) nogen
 
 //  b. inspect
 mean deflator [pw = hhweight] // should be close to 1

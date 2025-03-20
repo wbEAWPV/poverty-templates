@@ -20,6 +20,15 @@ adopath ++ 	"${github_rep}\ado"
 
 global draw 0 // whether or not to draw diagnostic graphs
 
+// prices to construct and use
+global prices classic_kg_cluster
+// classic_unit_cluster
+// lsms_kg_cluster
+// lsms_kg_domain_deflated
+// lsms_kg_domain_none
+// lsms_kg_domain_quarter
+// lsms_unit_domain_quarter
+
 // reference population for basket for food poverty line
 global min_decile 2
 global max_decile 6

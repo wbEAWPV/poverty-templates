@@ -15,8 +15,8 @@ gen wh = consexp/hh_total
 
 //  c. merge in prices
 gen c0 = item
-merge m:1 psu c0 using "${temp}\ph_classic_kg_cluster.dta", assert(match using) keep(match) nogen
-merge m:1 c0     using "${temp}\p0_classic_kg_cluster.dta", assert(match using) keep(match) nogen 
+merge m:1 psu c0 using "${temp}\ph_$prices.dta", assert(match using) keep(match) nogen
+merge m:1 c0     using "${temp}\p0_$prices.dta", assert(match using) keep(match) nogen 
 
 //  d. relative prices
 gen p0_ph = p0/ph 
@@ -31,15 +31,20 @@ sum deflator_joint, d
 lab var deflator_joint "joint Paasche index, hh-level, food prices from survey"
 
 //  f. winsorize outliers (optional, but a good idea with hh-level deflators)
+merge 1:1 hhid using "${temp}\hh_char.dta", assert(using match) keepusing(hhid admin1 urbrur) // merge in all hhs so we can impute missing due to no food cons
 gen domain = admin1 * 10 + urbrur // look at distribution of deflators in each domain
 flagout deflator_joint [pw = hhweight], item(domain) z(3)
 replace deflator_joint = _min if _flag == -1
 replace deflator_joint = _max if _flag == 1
 sum deflator_joint, d 
-drop _min _max _median _flag
 
-//  g. save
+//  g. impute for hhs with no food consumption
+replace deflator_joint = _med if _merge == 2
+assert def < .
+drop _merge _min _max _flag _med
+
+//  h. save
 save "${temp}\deflators_DZ.dta", replace
 
-//  h. graphs
+//  i. graphs
 if $draw graph box deflator_joint, over(urbrur) asyvar over(admin1) 

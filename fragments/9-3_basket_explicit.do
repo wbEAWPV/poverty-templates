@@ -15,7 +15,7 @@ replace cal = cal * `factor'
 total cal // double check
 
 // merge in prices
-merge 1:1 c0 using "${temp}\p0_classic_kg_cluster.dta", assert(match using) keep(match) nogen
+merge 1:1 c0 using "${temp}\p0_$prices.dta", assert(match using) keep(match) nogen
 gen cost = pc_daily_qkg * p0
 gen per_cal = cost/cal
 list c0 pc_daily_qkg cal p0 cost per_cal

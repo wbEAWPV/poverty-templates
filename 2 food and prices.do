@@ -53,13 +53,13 @@ save `maindata'
 /* ---- 3. Prices ----------------------------------------------------------- */
 //  need to do something for prices (for deflators, basket) even if using self-reports in 4
 
-include "${frags}\2-3_prices_classic_kg_cluster.do"
+include "${frags}\2-3_prices_$prices.do"
 
 
 /* ---- 4. Consumption ------------------------------------------------------ */
 
 use `maindata', clear
-include "${frags}\2-4_food_valuation_classic_kg_cluster.do"
+include "${frags}\2-4_food_valuation_$prices.do"
 
 
 
