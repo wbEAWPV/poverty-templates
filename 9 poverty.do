@@ -2,22 +2,17 @@
 
 //  a. use nominal consumption aggregate data and other hh chars
 use "${temp}\nca.dta", clear
-merge 1:1 hhid using "${temp}\hh_char.dta", assert(match) nogen
+merge 1:1 hhid using "${temp}\hh_char_def.dta", assert(match) nogen
 
-//  b. merge in deflators
-merge m:1 hhid using "${temp}\deflators_DZ.dta", assert(master match)
-drop if _m == 1 // these are the hhs without any food consumption
-drop _m
-
-//  c. construct welfare and food welfare
+//  b. construct welfare and food welfare
 gen welfare = consexp/deflator_joint/hhsize 
 gen foodwel = foodcons/deflator_joint/hhsize
 tabstat welfare foodwel [aw = hhweight], stat(min p10 p25 med p75 p90 max)
 
-//  d. construct deciles based on welfare
+//  c. construct deciles based on welfare
 xtile decile = welfare [aw = hhweight * hhsize], n(10)
 
-//  e. check Engels
+//  d. check Engels
 gen alpha = foodcons/consexp
 table decile urbrur [aw = hhweight], stat(mean alpha)
 

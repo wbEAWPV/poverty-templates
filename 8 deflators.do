@@ -2,7 +2,8 @@
 /* ---- 1. Select items to include ---------------------------------------------------- */
 
 //  this is simplest approach, could also use a reference population, or require a minimum share across different strata
-use "${temp}\food.dta", clear
+use "${dataout}\hh_item_data.dta", clear
+keep if class == 1 // for now, only considering food items
 merge m:1 hhid using "${temp}\hh_char.dta", assert(match using) keep(match) keepusing(hhweight)
 collapse (sum) consexp [pw = hhweight], by(item)
 egen item_total = total(consexp)
@@ -18,21 +19,17 @@ tempfile itemlist
 save `itemlist'
 
 
-/* ---- 2. Construct deflator ----------------------------------------------- */
+/* ---- 2. Construct deflator and merge in hh dataset ----------------------- */
 
-include "${frags}\8-2_def_DZ.do"
+include "${frags}\8-2_def_joint_Paasche_kg.do"
 
 
-/* ---- 3. Merge in and inspect --------------------------------------------- */
+/* ---- 3. Inspect ---------------------------------------------------------- */
 
-//  a. merge
-use "${temp}\hh_char.dta", clear
-merge 1:1 hhid using "${temp}\deflators_DZ.dta", assert(match) keep(match) nogen
-//merge m:1 admin1 urbrur quarter using "${temp}\deflators_joint_Laspeyres.dta", assert(match) nogen
-//merge m:1 admin1 urbrur quarter using "${temp}\deflators_joint_Paasche_modal.dta", assert(match) nogen
-
-//  b. inspect
+//  a. inspect
 mean deflator [pw = hhweight] // should be close to 1
 table (quarter) (admin1 urbrur) [pw = hhweight], stat(mean deflator) nototal
 if $draw graph box deflator, over(urbrur) asyvar over(admin1) name(spatial, replace)
 if $draw graph box deflator, over(quarter) name(temporal, replace)
+
+save "${temp}\hh_char_def.dta", replace

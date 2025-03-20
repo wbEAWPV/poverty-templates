@@ -48,3 +48,7 @@ save "${temp}\deflators_DZ.dta", replace
 
 //  i. graphs
 if $draw graph box deflator_joint, over(urbrur) asyvar over(admin1) 
+
+//  j. merge into hh data on correct variables before returning
+use "${temp}\hh_char.dta", clear
+merge m:1 hhid using "${temp}\deflators_DZ.dta", assert(match) nogen

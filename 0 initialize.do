@@ -48,7 +48,23 @@ global ravallion 1
 
 //exit
 
-/* ---- 4. Run all programs ------------------------------------------------- */
+
+/* ---- 4. Remove all temporary and output files ---------------------------- */
+
+local dirfiles: dir "$dataout" files "*.dta"
+foreach file of local dirfiles {
+	dis "${dataout}/`file'"
+	erase "${dataout}/`file'"
+}
+
+local dirfiles: dir "$temp" files "*.dta"
+foreach file of local dirfiles {
+	dis "${temp}/`file'"
+	erase "${temp}/`file'"
+}
+
+
+/* ---- 5. Run all programs ------------------------------------------------- */
 
 do "${github_rep}\1 hh basics.do"
 do "${github_rep}\2 food and prices.do"

@@ -1,5 +1,5 @@
 use "${temp}\food.dta", clear
-merge m:1 hhid using `refpop', assert(master match) keep(match) nogen // keep only obs for hh in reference population
+merge m:1 hhid using `refpop', keep(match) nogen // keep only obs for hh in reference population
 merge m:1 item using `itemlist', assert(master match) keep(match) nogen // keep only items in the basket
 
 // total quantity when have qkg
