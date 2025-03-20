@@ -25,7 +25,7 @@ save `allhhs'
 
 //  a. define reference population
 keep if inrange(decile, $min_decile, $max_decile)
-total hhsize
+total hhsize [pw = hhweight]
 local Nrefpop = r(table)[1,1]
 tempfile refpop
 save `refpop'
@@ -54,7 +54,7 @@ save `itemlist'
 /* ---- 3. Food poverty line ------------------------------------------------ */
 // basket explicit and cost-of-calories require you to have constructed quantities
 
-include "${frags}\9-3_basket_explicit.do"
+include "${frags}\9-3_basket_EHCVM.do"
 di `plf'
 
 

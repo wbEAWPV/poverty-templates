@@ -1,20 +1,21 @@
+if !regexm("$prices", "kg") {
+   di as err "need per kg prices for EHCVM basket (for now)"
+   di as err "using $prices prices"
+   exit
+}
+
 //  a. get food consumption data and select relevant hhs and items
 use "${temp}\food.dta", clear
-des
 merge m:1 hhid using `refpop', keep(match) nogen // keep only obs for hh in reference population
 merge m:1 item using `itemlist', assert(master match) keep(match) nogen // keep only items in the basket
 
-//  b. check have data required
-cap des qkg
-if _rc {
-    di as err "quantities in kg have not been constructed, cannot do explicit basket construction"
-    di as err "using $prices prices"
-    exit
-}
+//  b. total value, per capita per day
+collapse (sum) consexp [pw = hhweight], by(c0)
 
-//  c. total quantity in kg, per capita per day
-collapse (sum) qkg [pw = hhweight], by(c0)
-gen pc_daily_qkg = qkg / `Nrefpop' / 7 // 7 is number of days in recall period
+//  c. merge in p0 in kg to convert to kg
+merge 1:1 c0 using "${temp}\p0_$prices.dta", assert(match using) keep(match) nogen
+gen qkg = consexp / p0 
+gen pc_daily_qkg = qkg / `Nrefpop' / 365 // consexp is annual
 list
 
 //  d. merge in calories and construct calories per capita per day initially

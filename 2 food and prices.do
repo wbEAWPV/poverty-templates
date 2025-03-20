@@ -59,7 +59,8 @@ include "${frags}\2-3_prices_$prices.do"
 /* ---- 4. Consumption ------------------------------------------------------ */
 
 use `maindata', clear
-include "${frags}\2-4_food_valuation_$prices.do"
+//include "${frags}\2-4_food_valuation_$prices.do"
+include "${frags}\2-4_food_selfreport.do"
 
 
 
@@ -131,6 +132,7 @@ lab val item items
 recode c0 (1/17 = 1 "food general") (18/20 = 3 "nonfood") (99 = 2 "FAFH"), gen(class)
 
 //  d. save
+des
 save "${temp}\food.dta", replace 
 
 
@@ -148,3 +150,5 @@ if $draw histogram logcons, normal // less normal than you would expect with rea
 /* -------------------------------------------------------------------------- */
 /*          B. Food Away from Home                                            */
 /* -------------------------------------------------------------------------- */
+
+// to be written

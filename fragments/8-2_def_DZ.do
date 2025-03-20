@@ -4,6 +4,14 @@
 // hhs in a cluster are assumed to face the same market prices, use cluster-level prices for ph
 // use hh-level budget shares as weights, so each hh will have a unique value of the deflator
 
+//  a. check for correct form
+if !regexm("$prices", "kg") {
+   di as err "need per kg prices for def_joint_Paasche_kg deflator"
+   di as err "using $prices prices"
+   exit
+}
+// could do this using just model prices, or combining different units via Jevons
+
 //  b. weights: share of hh value of consumption of each item
 use "${temp}\food.dta", clear
 merge m:1 hhid using "${temp}\hh_char.dta", assert(using match) keep(match) nogen
