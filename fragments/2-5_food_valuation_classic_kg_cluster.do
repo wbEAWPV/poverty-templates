@@ -16,7 +16,7 @@ replace qkg2 = . if miss_inv_c4
 //  c. value this using local prices
 merge m:1 psu c0 using "${temp}\ph_classic_kg_cluster.dta", keep(master match)
 gen consexp2 = qkg2 * ph 
-gen miss_inv_consexp2 = miss_inv_c4 | ph >= .
+gen miss_inv_consexp2 = miss_inv_c4 | (qkg2 > 0 & qkg2 < . & ph >= .)
 
 //  d. construct quanitity in kg for consumption from purchases as well
 drop kg_per_unit

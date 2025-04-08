@@ -181,7 +181,9 @@ save "${temp}\food.dta", replace
 
 /* ---- 8. Quick check ------------------------------------------------------ */
 
-table item source, stat(p50 consexp)
+table item source, stat(p50 consexp) nformat(%10.0fc)
+table item source, stat(sum consexp) nformat(%15.0fc)
+BREAK
 
 collapse (sum) consexp, by(hhid)
 sum consexp, d

@@ -3,7 +3,6 @@
 // constructs prices down to the level of the cluster=PSU if possible
 
 //  a. keep observations from which we will construct prices
-keep if (c2a > 0 & c2a < .) & inlist(c2b, 1, 2, 3) & (c3 > 0 & c3 < .) // keep only obs with all the information needed
 drop if miss_inv_c2 | miss_inv_c3 // in addition, drop anything flagged as invalid in c2 or c3
 gen lnexp = ln(c3)
 flagout c3 [pw = hhweight], item(c0) z($lowz) // flag and don't use outliers in cost of purchases
