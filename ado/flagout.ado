@@ -1,17 +1,10 @@
 program flagout
     version 17
-    syntax varname [pweight] [if], item(varlist max=1) [over(varlist) z(real 3) minn(integer 20) VERbose]
+    syntax varname [pweight] [if], item(varlist max=1) [over(varlist) z(real 3.5) minn(integer 30) VERbose]
 
     tempfile stats
     tempvar p10 p25 center p75 p90 n scale i
 
-
-/*
-    foreach var in _flag _min _max _med {
-        cap drop `var'
-        if !_rc di "`var' already exists, dropping"
-    }
-*/
 
     gen `i' = 1 if `varlist' < .
 
@@ -80,7 +73,13 @@ if "`over'" != "" {
         table `item', stat(mean _min `center' _max `scale' `n')
     }
 
-    qui gen _median = `center' // can use this to impute
+    qui cap gen _median = `center' // can use this to impute
+    if _rc == 110 {
+        di "_median already exists, dropping"
+        drop _median
+        qui gen _median = `center'
+    }
+
     qui replace _flag = -1 if `varlist' < _min & `varlist' < . & `n' > `minn'
     qui replace _flag = 1  if `varlist' > _max & `varlist' < . & `n' > `minn'
 

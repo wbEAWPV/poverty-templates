@@ -7,7 +7,7 @@
 //  a. load data
 use "${datain}\section_C_food.dta", clear
 merge m:1 hhid using "${temp}\hh_char.dta", keepusing(quarter hhsize hhweight urbrur admin1 admin2 psu) 
-// note: all hhs in food data in this version
+// note: not all hhs in food data in this version
 keep if _m == 3
 drop _m
 isid hhid c0
@@ -15,99 +15,142 @@ isid hhid c0
 //  b. check data shape
 tab c0
 tab c1, m
-tab c6 if c1 == 1, m
-// no issues
 
-//  d. check missing values in filter
-count if c0 == . // no missing item code
-count if c1 == .
-count if c6 == . & c1 == 1
-// no missing in filter questions
+//  c. check of quantities and units
+sum c2a, d
+sum c4a, d
+sum c7a, d
+tab c0 c2b 
+tab c0 c4b
+tab c0 c7b
+tabstat c2a, by(c2b) s(min p10 p25 p50 p75 p90 max)
+tabstat c4a, by(c4b) s(min p10 p25 p50 p75 p90 max)
+tabstat c7a, by(c7b) s(min p10 p25 p50 p75 p90 max)
 
-//  e. check of nonmissing behind filter
-egen x1 = rownonmiss(c2a-c8)
-count if x1 > 0 & c1 == 2
-egen x2 = rownonmiss(c7a-c8)
-count if x2 > 0 & c6 == 2
-// no issues
+//  d. expenditure amounts
+sum c3, d
+sum c5, d
+sum c8, d
 
-//  f. check of key variables
-assert c3 >= 0
-assert c5 >= 0
+//  e. second filter question
+tab c6, m
+egen nvars = rownonmiss(c7a c7b c8)
+tab nvars c6 // based on this, check the specific case below:
+list c7a-c8 if c6 == 2 & nvars == 1 
+replace c8 = .a if c8 == 9999 & c6 == 2 // a rare case where it is totally fine to replace the original variable -- still prefer to use extended missing values
 
 
-/* ---- 2. Address missing observations and missing filter questions -------- */
+/* ---- 2. Identify missing and invalid values in quantities/units ---------- */
 
-//  nothing to do for this dataset
+// doing this with real data, you could use asserts to verify that certain issues don't occur in your data, and 
+// then just focus on flagging those that do. 
+// most real datasets would not have all these variables as well
 
-bys hhid: egen items_consumed = total(c1 == 1)
-bys hhid: gen hhtag = _n == 1
-tab items_consumed if hhtag
-// 68 hhs with no food consumption
+// in this dataset, there are no filter questions "did the hh consume from purchases" or "did the hh consume from own production"
+count if c2a == 0 & c4a == 0 // these are errors, but can't know for sure if from consumption or purchase or both
+gen miss_inv_c24 = (c2a == 0 & c4a == 0)
 
-keep if c1 == 1
+//  a. identify missing values and invalid 0s in c2a/b and c4a/b
+gen miss_inv_c2 = 0
+replace miss_inv_c2 = 1 if c2a >= . // quantity should never be missing
+replace miss_inv_c2 = 1 if c2b >= . & c2a != 0 // unit should not be missing if quantity is nonzero
+replace miss_inv_c2 = 3 if c2a == 0 & c2b > .  // 0 quantity but nonmissing unit
+gen miss_inv_c4 = 0
+replace miss_inv_c4 = 1 if c4a >= . // quantity should never be missing
+replace miss_inv_c4 = 1 if c4b >= . & c4a != 0 // unit should not be missing if quantity is nonzero
+replace miss_inv_c4 = 3 if c4a == 0 & c4b > .   // 0 quantity by nonmissing unit
+
+//  b. identify missing values and invalid 0s in c7a/b
+gen miss_inv_c7 = 0
+replace miss_inv_c7 = 1 if (c7a >= . | c7b >= .) & c6 == 1
+replace miss_inv_c7 = 3 if c7a == 0 & c6 == 1
+
+//  c. identify truly invalid values, improbably low or high quantities, invalid item-unit combos
+foreach i of numlist 2 4 7 {
+    di "---"
+    replace miss_inv_c`i' = 2 if c`i'a < 0                                      // negative quantities
+    replace miss_inv_c`i' = 2 if !inlist(c`i'b, 1, 2, 3, 4) & c`i'b < .         // invalid unit codes
+    replace miss_inv_c`i' = 5 if inlist(c`i'b, 2, 3) & floor(c`i'a) != c`i'a    // fractional heaps/cups
+
+    // ad hoc bounds, could do more robustly via flagout
+    replace miss_inv_c`i' = 8 if inlist(c`i'b, 1, 2, 3) & c`i'a > 50 & c`i'a < .    // max of 50 for cups, heaps or kg
+    replace miss_inv_c`i' = 8 if c`i'b == 4 & c`i'a > 5000 & c`i'a < .              // max of 5000 for mg = 5 kg
+    replace miss_inv_c`i' = 4 if c`i'b == 1 & c`i'a < 0.1 & c`i'a > 0               // min of 0.1 for kg
+    replace miss_inv_c`i' = 4 if inlist(c`i'b, 2, 3) == 1 & c`i'a < 1 & c`i'a > 0   // min of 1 for cup or heap
+    replace miss_inv_c`i' = 4 if c`i'b == 4 & c`i'a < 5 & c`i'a > 0                 // min of 5 for mg
+
+    replace miss_inv_c`i' = 6 if inlist(c`i'a, $specials)
+
+    replace miss_inv_c`i' = 7 if inlist(c0, 10, 11) & c`i'b == 2 // say these two items can't be measured in heaps
+}
+
+tab1 miss_inv*
+// with real data, the highish number of obs with more than 50 cups or 50 heaps for own production could be cause for concern
+
+
+/* ---- 3. Identify missing and invalid expenditures/values of consumption -- */
+
+//  a. truly missing values
+gen miss_inv_c3 = 0
+replace miss_inv_c3 = 1 if c3 >= . & c2a > 0 & c2b < .
+
+gen miss_inv_c5 = 0
+replace miss_inv_c5 = 1 if c5 >= . & c4a > 0 & c4b < .
+
+gen miss_inv_c8 = 0
+replace miss_inv_c8 = 1 if c8 >= . & c6 == 1
+
+foreach i of numlist 3 5 8 {
+    di "---"
+    replace miss_inv_c`i' = 2 if c`i' == 0 // should never be 0
+    replace miss_inv_c`i' = 3 if c`i' < 0  // should never be negative
+    replace miss_inv_c`i' = 4 if c`i' > 0 & c`i' < 50 // set 50 as smallest transaction
+    replace miss_inv_c`i' = 5 if mod(c`i', 5) != 0 & c`i' < .
+    replace miss_inv_c`i' = 6 if inlist(c`i', $specials)
+}
+
+tab1 miss_inv_c3 miss_inv_c5 miss_inv_c8
+
+
+/* ---- 4. Prices ----------------------------------------------------------- */
+//  almost certainly need to do something for prices (for deflators, basket) even if using self-reports in 4
+
 tempfile maindata
 save `maindata'
+include "${frags}\2-4_prices_$prices.do"
 
 
-/* ---- 3. Prices ----------------------------------------------------------- */
-//  need to do something for prices (for deflators, basket) even if using self-reports in 4
 
-include "${frags}\2-3_prices_$prices.do"
-
-
-/* ---- 4. Consumption ------------------------------------------------------ */
+/* ---- 5. Consumption ------------------------------------------------------ */
 
 use `maindata', clear
-//include "${frags}\2-4_food_valuation_$prices.do"
-include "${frags}\2-4_food_selfreport.do"
+include "${frags}\2-5_food_valuation_$prices.do"
+//include "${frags}\2-5_food_selfreport.do"
 
 
+/* ---- 6. Indentification and treatment of outliers and missing/invalid ---- */
 
-/* ---- 5. Lower outliers --------------------------------------------------- */
+gen adm1ur = admin1*10 + urbrur // extra variable for outlier detection / winsorization / imputation
 
-//  a. look at lowest values
-table c0, stat(min consexp1 consexp2)
-// winsorize these 
+//  a. a few additional missing where hh said consumed but both quants 0
+// consumption for each item more likely from purchases or own production?
+gen more_purch = c2a > 0 & c2a < . if !(c2a > 0 & c4a > 0)
+bys c0: egen item_more_purch = wpctile(more_purch), w(hhweight)
+replace miss_inv_consexp1 = 9 if miss_inv_c24 & item_more_purch // flag to impute value of consumption from purchases
+replace miss_inv_consexp2 = 9 if miss_inv_c24 & !item_more_purch // flag to impute value of consumption from own product
 
-//  b. flag outliers in consexp1
-gen lpccons1 = log(consexp1/hhsize) 
-flagout lpccons1 [pw = hhweight], item(c0) z(3.5) over(admin1 urbrur)
-rename (_flag _max _min _median) =1
-
-//  c. flag outliers in consexp2
-gen lpccons2 = log(consexp2/hhsize) 
-flagout lpccons2 [pw = hhweight], item(c0) z(3.5) over(admin1 urbrur)
-rename (_flag _max _min _median) =2
-
-//  d. winsorize lower outliers and negative values in both
-replace consexp1 = hhsize * exp(_min1) if _flag1 == -1 
-replace consexp1 = hhsize * exp(_min1) if consexp1 < 0
-replace consexp2 = hhsize * exp(_min2) if _flag2 == -1 
-replace consexp2 = hhsize * exp(_min2) if consexp2 < 0
+//  b. missing and upper outliers
+forval i = 1/2 {
+    di _n _n "****"
+    gen lpccons`i' = log(consexp`i'/hhsize) 
+    flagout lpccons`i' [pw = hhweight], item(c0) z($z) over(admin1 urbrur adm1ur)
+    table c0 _flag, stat(min consexp`i') stat(max consexp`i') nototal nformat(%12.0fc)
+    replace consexp`i' = hhsize * exp(_max) if _flag == 1            // winsorize upper outliers
+    replace consexp`i' = hhsize * exp(_med) if miss_inv_consexp`i'   // imput missing or invalid values
+}
 
 
-/* ---- 6. Upper outliers --------------------------------------------------- */
-
-replace consexp1 = hhsize * exp(_max1) if _flag1 == 1
-replace consexp2 = hhsize * exp(_max2) if _flag2 == 1
-
-
-/* ---- 7. Missing and zeros ------------------------------------------------ */
-
-replace consexp1 = hhsize * exp(_median1) if consexp1 == 0
-replace consexp2 = hhsize * exp(_median2) if consexp2 == 0
-
-egen count1 = rownonmiss(c2a c2b c3) // any variables relating to consumption from purchases
-egen count2 = rownonmiss(c4a c4b c5) // any variables relating to consumption from own production
-assert count1 == 0 if consexp1 == .
-assert count2 == 0 if consexp2 == .
-// no missing values of consexp.  If there were, we could impute them as below
-//replace consexp1 = hhsize * exp(_median1) if count1 > 0 & consexp1 == .
-//replace consexp2 = hhsize * exp(_median2) if coutn2 > 0 & consexp2 == .
-
-
-/* ---- 8. Form data -------------------------------------------------------- */
+/* ---- 7. Form data -------------------------------------------------------- */
 
 //  aa. reshape
 keep consexp* hhid c0 q*
@@ -136,7 +179,7 @@ des
 save "${temp}\food.dta", replace 
 
 
-/* ---- 9. Quick check ------------------------------------------------------ */
+/* ---- 8. Quick check ------------------------------------------------------ */
 
 table item source, stat(p50 consexp)
 

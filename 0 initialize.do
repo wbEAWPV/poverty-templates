@@ -12,13 +12,14 @@ global dataout      "${local_dir}\dataout"
 
 
 /* ---- 2. Add to ado path -------------------------------------------------- */
+
 discard
 adopath ++ 	"${github_rep}\ado"
 
 
 /* ---- 3. Globals for parameters ------------------------------------------- */
 
-global draw 0 // whether or not to draw diagnostic graphs
+global draw 1 // whether or not to draw diagnostic graphs
 
 // prices to construct and use
 global prices classic_kg_cluster
@@ -28,6 +29,8 @@ global prices classic_kg_cluster
 // lsms_kg_domain_none
 // lsms_kg_domain_quarter
 // lsms_unit_domain_quarter
+
+global minN_prices 8 // minimum number of observations to construct median price
 
 // reference population for basket for food poverty line
 global min_decile 2
@@ -46,10 +49,19 @@ global intrav = 10
 // 1 = lower, 2 = mid, 3 = upper
 global ravallion 1
 
+
+/* ---- 4. Other useful things ---------------------------------------------- */
+
+global specials 99, 999, 9999, 99999, 98, 998, 9998, 99998, 88, 888, 8888, 88888 
+// not exhaustive!  check what is defined on qx or other values of this type interviewers made up
+
+global z    4 // general threshold for identifying outliers
+global lowz 3 // lower threshold to be extra careful for inputs
+
 //exit
 
 
-/* ---- 4. Remove all temporary and output files ---------------------------- */
+/* ---- 5. Remove all temporary and output files ---------------------------- */
 
 local dirfiles: dir "$dataout" files "*.dta"
 foreach file of local dirfiles {

@@ -79,3 +79,5 @@ sum povline_total
 
 gen poor = welfare < povline
 table admin1 urbrur [aw = hhweight*hhsize], stat(mean poor)
+
+save "${dataout}\hh_welfare.dta", replace

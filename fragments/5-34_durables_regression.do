@@ -1,19 +1,23 @@
-
+// another approach when you only have age and current value
+drop d4 d5 // assume we don't have these
 
 /* ---- 2. Depreciation rates ----------------------------------------------- */
 
 //  a. outliers to exclude from construction of depreciation rates
-flagout d2 [pw = hhweight], item(d0) z(2.5)
-rename _flag flag1
-drop _min _max _median
-gen logd3 = log(d3)
-flagout logd3 [pw = hhweight], item(d0) z(2.5)
+gen age = d2 if !miss_inv_d2
+replace age = 0.5 if age == 0
+gen logage = log(age) // do additional checks because upper tail of age distribution is key here
+flagout logage [pw = hhweight], item(d0) z($lowz)
 rename _flag flag2
-drop _min _max _median
-gen include = flag1 == 0 & flag2 == 0
+
+gen logd3 = log(d3) if !miss_inv_d3
+flagout logd3 [pw = hhweight], item(d0) z(2.5)
+rename _flag flag3
+
+gen include = flag2 == 0 & flag3 == 0
 
 //  b. regressions
-gen lnval = ln(d3)
+gen lnval = ln(d3) 
 gen beta = .
 gen signif = .
 qui levelsof d0, local(items)
@@ -40,4 +44,4 @@ assert delta_regress > 0 & delta_regress < 1
 
 /* ---- 3. Construct use value ---------------------------------------------- */
 
-gen consexp = d1 * d3 * (`r' + delta_regress) 
+gen useval = d3 * (`r' + delta_regress)  if !miss_inv_d3 // only most recent item

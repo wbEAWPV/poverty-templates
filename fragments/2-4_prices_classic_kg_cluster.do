@@ -4,8 +4,9 @@
 
 //  a. keep observations from which we will construct prices
 keep if (c2a > 0 & c2a < .) & inlist(c2b, 1, 2, 3) & (c3 > 0 & c3 < .) // keep only obs with all the information needed
+drop if miss_inv_c2 | miss_inv_c3 // in addition, drop anything flagged as invalid in c2 or c3
 gen lnexp = ln(c3)
-flagout c3 [pw = hhweight], item(c0) z(2.5) // flag and don't use outliers in cost of purchases
+flagout c3 [pw = hhweight], item(c0) z($lowz) // flag and don't use outliers in cost of purchases
 keep if _flag == 0
 
 //  b. merge in conversion factors
@@ -14,9 +15,11 @@ merge m:1 c0 unit using "${datain}\conversion_factors.dta", keep(master match)
 assert _merge == 3 if inlist(unit, 2, 3) // have all the factors we need
 
 //  c. construct price per kg for each record of consumption from purchases
-gen qkg = c2a * kg_per_unit if inlist(unit, 2, 3)
-replace qkg = c2a if unit == 1
+gen     qkg = c2a * kg_per_unit if inlist(unit, 2, 3)
+replace qkg = c2a               if unit == 1
+replace qkg = c2a/1000          if unit == 4
 gen p = c3 / qkg
+// could check for outliers in qkg and/or p and drop
 assert p > 0 & p < .
 
 //  d. define levels for aggregation and minimum number of observations needed
@@ -27,7 +30,6 @@ local l2 admin1 quarter
 local l3 admin1 urbrur quarter
 local l4 admin1 admin2 urbrur quarter
 local l5 psu
-local minN 8
 
 //  e. construct median price at each level of aggregation
 gen x = 1  // to use with rawsum in collapse to count observations
@@ -62,7 +64,7 @@ table c0, stat(mean N0) // number of obs at national level
 assert p0 < .
 gen ph = p0
 forval i = 1/5 {
-    replace ph = p`i' if p`i' < . & N`i' >= `minN' 
+    replace ph = p`i' if p`i' < . & N`i' >= $minN_prices
 }
 
 //  i. tidy up and save
