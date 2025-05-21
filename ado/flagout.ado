@@ -1,15 +1,14 @@
 program flagout
-    version 17
+    version 13
     syntax varname [pweight] [if], item(varlist max=1) [over(varlist) z(real 3.5) minn(integer 30) VERbose]
 
     tempfile stats
     tempvar p10 p25 center p75 p90 n scale i
 
-
     gen `i' = 1 if `varlist' < .
 
     preserve
-        collapse (p10) `p10' = `varlist' (p25) `p25' = `varlist' (p50) `center' = `varlist' (p75) `p75' = `varlist' (p90) `p90' = `varlist' (rawsum) `n' = `i' [pw`exp'], by(`item')
+        collapse (p10) `p10' = `varlist' (p25) `p25' = `varlist' (p50) `center' = `varlist' (p75) `p75' = `varlist' (p90) `p90' = `varlist' (rawsum) `n' = `i' [`weight'`exp'], by(`item')
         qui gen `scale' = (`p75'-`p25')/1.35
         qui replace `scale' = (`p90'-`p10')/2.56 if `scale' == 0 
         keep `item' `center' `scale' `n'
@@ -22,7 +21,7 @@ if "`over'" != "" {
     foreach var of varlist `over' {
         tempfile stats_`var'
         preserve
-            collapse (p10) `p10' = `varlist' (p25) `p25' = `varlist' (p50) `center' = `varlist' (p75) `p75' = `varlist' (p90) `p90' = `varlist' (rawsum) `n' = `i' [pw`exp'], by(`item' `var')
+            collapse (p10) `p10' = `varlist' (p25) `p25' = `varlist' (p50) `center' = `varlist' (p75) `p75' = `varlist' (p90) `p90' = `varlist' (rawsum) `n' = `i' [`weight'`exp'], by(`item' `var')
             qui drop if `n' < `minn'
             gen `scale' = (`p75'-`p25')/1.35
             qui replace `scale' = (`p90'-`p10')/2.56 if `scale' == 0 
