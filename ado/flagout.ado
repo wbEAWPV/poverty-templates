@@ -1,37 +1,62 @@
-program flagout
+program flagout_asymmetric
     version 13
-    syntax varname [pweight] [if], item(varlist max=1) [over(varlist) z(real 3.5) minn(integer 30) VERbose]
+    syntax varname [pweight] [if], item(varlist max=1) [over(varlist) z(real 3.5) minn(integer 30) VERbose ASYMmetric]
 
     tempfile stats
     tempvar p10 p25 center p75 p90 n scale i
+    tempvar min max
 
     gen `i' = 1 if `varlist' < .
 
     preserve
         collapse (p10) `p10' = `varlist' (p25) `p25' = `varlist' (p50) `center' = `varlist' (p75) `p75' = `varlist' (p90) `p90' = `varlist' (rawsum) `n' = `i' [`weight'`exp'], by(`item')
-        qui gen `scale' = (`p75'-`p25')/1.35
-        qui replace `scale' = (`p90'-`p10')/2.56 if `scale' == 0 
-        keep `item' `center' `scale' `n'
+        qui generat `scale' = (`p75' - `p25')/1.35
+        qui replace `scale' = (`p90' - `p10')/2.56 if `scale' == 0
+        if "`asymmetric'" != "" {
+            qui generat `min' = `p25' - `z'/2 * (`p75'-`p25')/1.35
+            qui generat `max' = `p75' + `z'/2 * (`p75'-`p25')/1.35
+            qui replace `min' = `p10' - `z'/2 * (`p90'-`p10')/2.56 if `p75' == `p25'
+            qui replace `max' = `p90' + `z'/2 * (`p90'-`p10')/2.56 if `p75' == `p25'
+        }
+        else {
+            qui generat `min' = `center' - `z' * (`p75'-`p25')/1.35
+            qui generat `max' = `center' + `z' * (`p75'-`p25')/1.35
+            qui replace `min' = `center' - `z' * (`p90'-`p10')/2.56 if `p75' == `p25'
+            qui replace `max' = `center' + `z' * (`p90'-`p10')/2.56 if `p75' == `p25'
+        }
+        keep `item' `center' `min' `max' `n' `scale'
         qui save `stats'
     restore
 
     qui merge m:1 `item' using `stats', assert(match) nogen
 
-if "`over'" != "" {
-    foreach var of varlist `over' {
-        tempfile stats_`var'
-        preserve
-            collapse (p10) `p10' = `varlist' (p25) `p25' = `varlist' (p50) `center' = `varlist' (p75) `p75' = `varlist' (p90) `p90' = `varlist' (rawsum) `n' = `i' [`weight'`exp'], by(`item' `var')
-            qui drop if `n' < `minn'
-            gen `scale' = (`p75'-`p25')/1.35
-            qui replace `scale' = (`p90'-`p10')/2.56 if `scale' == 0 
-            keep `item' `var' `center' `scale' 
-            qui save `stats_`var''
-        restore
+    if "`over'" != "" {
+        foreach var of varlist `over' {
+            tempfile stats_`var'
+            preserve
+                collapse (p10) `p10' = `varlist' (p25) `p25' = `varlist' (p50) `center' = `varlist' (p75) `p75' = `varlist' (p90) `p90' = `varlist' (rawsum) `n' = `i' [`weight'`exp'], by(`item' `var')
+                qui drop if `n' < `minn'
+                qui generat `scale' = `p75' - `p25'
+                qui replace `scale' = `p90' - `p10' if `scale' == 0
+                if "`asymmetric'" != "" {
+                    qui generat `min' = `p25' - `z'/2 * (`p75'-`p25')/1.35
+                    qui generat `max' = `p75' + `z'/2 * (`p75'-`p25')/1.35
+                    qui replace `min' = `p10' - `z'/2 * (`p90'-`p10')/2.56 if `p75' == `p25'
+                    qui replace `max' = `p90' + `z'/2 * (`p90'-`p10')/2.56 if `p75' == `p25'
+                }
+                else {
+                    qui generat `min' = `center' - `z' * (`p75'-`p25')/1.35
+                    qui generat `max' = `center' + `z' * (`p75'-`p25')/1.35
+                    qui replace `min' = `center' - `z' * (`p90'-`p10')/2.56 if `p75' == `p25'
+                    qui replace `max' = `center' + `z' * (`p90'-`p10')/2.56 if `p75' == `p25'
+                }
+                keep `var' `item' `center' `min' `max' `n' `scale'
+                qui save `stats_`var''
+            restore
 
-        qui merge m:1 `item' `var' using `stats_`var'',  update replace nogen
+            qui merge m:1 `item' `var' using `stats_`var'',  update replace nogen
+        }
     }
-}
 
     qui count if `scale' == 0
     if r(N) > 0 {
@@ -46,49 +71,24 @@ if "`over'" != "" {
         tab `item' if `n' < `minn' & `varlist' < .
     }
 
-    qui cap gen _flag = 0 if `varlist' < . & `n' > `minn'
-    if _rc == 110 {
-        di "_flag already exists, dropping"
-        drop _flag
-        qui gen _flag = 0 if `varlist' < . & `n' > `minn'
+    foreach nvar in _min _max _median _flag {
+        qui cap confirm new variable `nvar'
+        if _rc == 110 {
+            di "`nvar' already exists, dropping"
+            drop `nvar'
+        }
     }
-    qui cap gen _min  = `center' - `z'*`scale'
-    if _rc == 110 {
-        di "_min already exists, dropping"
-        drop _min
-        qui gen _min = `center' - `z'*`scale'
-    }
-    qui cap gen _max  = `center' + `z'*`scale'
-    if _rc == 110 {
-        di "_max already exists, dropping"
-        drop _max
-        qui gen _max = `center' + `z'*`scale'
-    }
+    qui gen _median = `center' // can use this to impute
+    qui gen _min  = `min'
+    qui gen _max  = `max'
 
-    if "`verbose'" == "verbose" {
-        di "table"
-        lab var `scale' "scale"
-        lab var `n' "global N"
-        table `item', stat(mean _min `center' _max `scale' `n')
-    }
-
-    qui cap gen _median = `center' // can use this to impute
-    if _rc == 110 {
-        di "_median already exists, dropping"
-        drop _median
-        qui gen _median = `center'
-    }
-
+    qui gen _flag = 0 if `varlist' < . & `n' > `minn'
     qui replace _flag = -1 if `varlist' < _min & `varlist' < . & `n' > `minn'
     qui replace _flag = 1  if `varlist' > _max & `varlist' < . & `n' > `minn'
 
     if "`verbose'" == "verbose" {
-        tempvar up low
-        qui gen `up' = 100 *(_flag == 1) if `varlist' < .
-        qui gen `low' = 100 *(_flag == -1) if `varlist' < .
-        lab var `up' "% upper outliers"
-        lab var `low' "% lower outliers"
-        table `item', stat(mean `low' `up')
+        table `item', c(mean _min mean _median mean _max freq)
+        tab `item' _flag, nofreq row
     }
 
     tempname xx
